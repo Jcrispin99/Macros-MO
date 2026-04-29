@@ -1,138 +1,154 @@
-  Sub TransferirDislipidemias()                                                                                                   
+Sub TransferirDislipidemias()                                                                                                   
       Dim wsOri As Worksheet, wsDes As Worksheet                                                                                  
       Dim ultOri As Long, ultDes As Long, ultUsed As Long                                                                         
       Dim colD As Variant, colH As Variant, colAQ As Variant, colCF_CJ As Variant                                                 
       Dim dnisDes As Variant                                                                                                      
       Dim mapaDes As Collection                                                                                                   
       Dim i As Long, k As Long, n As Long                                                                                         
-      Dim dni As String, dniNorm As String
+      Dim dni As String, dniNorm As String                                                                                        
       Dim filaDes As Long, colFecha As Long, slotLibre As Long                                                                    
-      Dim transferidos As Long, nuevos As Long, sinDislip As Long, yaLlenos As Long                                               
+      Dim transferidos As Long, nuevos As Long, sinDislip As Long, yaLlenos As Long
       Dim val As Variant, dniVal As Variant, cv As Variant                                                                        
       Dim t0 As Double                                                                                                            
                                                                                                                                   
       Set wsOri = HojaPorNombre_Dis(ThisWorkbook, "MATRIZ GENERAL")                                                               
-      If wsOri Is Nothing Then Set wsOri = HojaPorNombre_Dis(ThisWorkbook, "REGISTRO MEDIWEB")                                    
+      If wsOri Is Nothing Then Set wsOri = HojaPorNombre_Dis(ThisWorkbook, "REGISTRO MEDIWEB")
       Set wsDes = HojaPorNombre_Dis(ThisWorkbook, "DISLIPIDEMIAS")                                                                
-      If wsOri Is Nothing Or wsDes Is Nothing Then                                                                                
+      If wsOri Is Nothing Or wsDes Is Nothing Then
           MsgBox "Falta hoja origen o destino", vbCritical                                                                        
           Exit Sub                                                                                                                
-      End If      
+      End If                                                                                                                      
                                                                                                                                   
       Application.ScreenUpdating = False                                                                                          
       Application.Calculation = xlCalculationManual
       Application.EnableEvents = False                                                                                            
-      t0 = Timer                                                                                                                  
-   
+      t0 = Timer  
+                                                                                                                                  
       ultOri = wsOri.Cells(wsOri.Rows.Count, "H").End(xlUp).Row                                                                   
-      ultUsed = wsOri.UsedRange.Row + wsOri.UsedRange.Rows.Count - 1
+      ultUsed = wsOri.UsedRange.Row + wsOri.UsedRange.Rows.Count - 1                                                              
       If ultOri > ultUsed Then ultOri = ultUsed                                                                                   
-      If ultOri < 4 Then GoTo Fin
+      If ultOri < 4 Then GoTo Fin                                                                                                 
       If ultOri > 200000 Then ultOri = 200000                                                                                     
                                                                                                                                   
       ultDes = wsDes.Cells(wsDes.Rows.Count, "H").End(xlUp).Row                                                                   
       If ultDes < 2 Then ultDes = 2                                                                                               
                                                                                                                                   
-      ' Mapa DNI -> fila destino                                                                                                  
       Set mapaDes = New Collection                                                                                                
-      If ultDes >= 3 Then                                                                                                         
+      If ultDes >= 3 Then
           dnisDes = wsDes.Range("H2:H" & ultDes).Value                                                                            
           For k = 2 To UBound(dnisDes, 1)                                                                                         
               val = dnisDes(k, 1)                                                                                                 
               If Not IsError(val) Then                                                                                            
-                  If IsNumeric(val) And Len(Trim(CStr(val & ""))) > 0 Then
+                  If IsNumeric(val) And Len(Trim(CStr(val & ""))) > 0 Then                                                        
                       On Error Resume Next                                                                                        
                       mapaDes.Add k + 1, CStr(CDbl(val))                                                                          
                       On Error GoTo 0                                                                                             
-                  End If                                                                                                          
+                  End If
               End If                                                                                                              
           Next k  
       End If
 
-      ' Lecturas separadas por columna (evita overflow del bloque ancho)                                                          
-      On Error GoTo ErrLect
-      colD = wsOri.Range("D4:D" & ultOri).Value      ' Fecha                                                                      
-      colH = wsOri.Range("H4:H" & ultOri).Value      ' DNI                                                                        
-      colAQ = wsOri.Range("AQ4:AQ" & ultOri).Value   ' Tipo examen                                                                
-      colCF_CJ = wsOri.Range("CF4:CJ" & ultOri).Value ' Col Total..Trig                                                           
+      On Error GoTo ErrLect                                                                                                       
+      colD = wsOri.Range("D4:D" & ultOri).Value
+      colH = wsOri.Range("H4:H" & ultOri).Value                                                                                   
+      colAQ = wsOri.Range("AQ4:AQ" & ultOri).Value                                                                                
+      colCF_CJ = wsOri.Range("CF4:CJ" & ultOri).Value
       On Error GoTo 0                                                                                                             
-                                                                                                                                  
+                  
       If Not IsArray(colH) Then GoTo Fin                                                                                          
-                                                                                                                                  
+                  
       For i = 1 To UBound(colH, 1)                                                                                                
           dniVal = colH(i, 1)
-          If IsError(dniVal) Then GoTo Sig
+          If IsError(dniVal) Then GoTo Sig                                                                                        
           dni = Trim(CStr(dniVal & ""))                                                                                           
-          If Len(dni) = 0 Then GoTo Sig                                                                                           
+          If Len(dni) = 0 Then GoTo Sig
           If Not IsNumeric(dni) Then GoTo Sig                                                                                     
-                                                                                                                                  
-          ' Filtro: HDL (CG=col 2 en CF:CJ) o TRIG (CJ=col 5)                                                                     
-          If LongStr_Dis(colCF_CJ(i, 2)) = 0 And LongStr_Dis(colCF_CJ(i, 5)) = 0 Then                                             
-              sinDislip = sinDislip + 1                                                                                           
-              GoTo Sig
-          End If                                                                                                                  
                   
-          dniNorm = CStr(CDbl(dni))                                                                                               
+          If LongStr_Dis(colCF_CJ(i, 2)) = 0 And LongStr_Dis(colCF_CJ(i, 5)) = 0 Then                                             
+              sinDislip = sinDislip + 1
+              GoTo Sig                                                                                                            
+          End If  
+                                                                                                                                  
+          dniNorm = CStr(CDbl(dni))
           filaDes = 0
-          On Error Resume Next                                                                                                    
+          On Error Resume Next
           filaDes = mapaDes(dniNorm)
           On Error GoTo 0                                                                                                         
-                  
+   
           If filaDes = 0 Then                                                                                                     
               ultDes = ultDes + 1
-              filaDes = ultDes                                                                                                    
+              filaDes = ultDes
               wsDes.Cells(filaDes, "H").Value = CDbl(dni)
               mapaDes.Add filaDes, dniNorm                                                                                        
-              slotLibre = 1                                                                                                       
+              slotLibre = 1
               nuevos = nuevos + 1                                                                                                 
           Else                                                                                                                    
               slotLibre = 0
               For n = 1 To 9                                                                                                      
                   colFecha = 25 + (n - 1) * 15
-                  cv = wsDes.Cells(filaDes, colFecha).Value                                                                       
-                  If IsError(cv) Then cv = ""
-                  If Len(Trim(CStr(cv & ""))) = 0 Then                                                                            
+                  cv = wsDes.Cells(filaDes, colFecha).Value
+                  If IsError(cv) Then cv = ""                                                                                     
+                  If Len(Trim(CStr(cv & ""))) = 0 Then
                       slotLibre = n                                                                                               
                       Exit For                                                                                                    
-                  End If                                                                                                          
-              Next n
+                  End If
+              Next n                                                                                                              
               If slotLibre = 0 Then
                   yaLlenos = yaLlenos + 1
-                  GoTo Sig                                                                                                        
+                  GoTo Sig
               End If
-          End If                                                                                                                  
-                  
-          colFecha = 25 + (slotLibre - 1) * 15                                                                                    
-          wsDes.Cells(filaDes, colFecha).Value = colD(i, 1)            ' FECHA
-          wsDes.Cells(filaDes, colFecha + 1).Value = colCF_CJ(i, 1)    ' COL TOTAL (CF)                                           
-          wsDes.Cells(filaDes, colFecha + 2).Value = colCF_CJ(i, 2)    ' HDL (CG)                                                 
-          wsDes.Cells(filaDes, colFecha + 3).Value = colCF_CJ(i, 3)    ' LDL (CH)                                                 
-          wsDes.Cells(filaDes, colFecha + 4).Value = colCF_CJ(i, 4)    ' VLDL (CI)                                                
-          wsDes.Cells(filaDes, colFecha + 5).Value = colCF_CJ(i, 5)    ' TRIG (CJ)                                                
-          wsDes.Cells(filaDes, colFecha + 13).Value = colAQ(i, 1)      ' TIPO EXAMEN                                              
+          End If
+                                                                                                                                  
+          colFecha = 25 + (slotLibre - 1) * 15
+          wsDes.Cells(filaDes, colFecha).Value = colD(i, 1)                                                                       
+          wsDes.Cells(filaDes, colFecha + 1).Value = colCF_CJ(i, 1)
+          wsDes.Cells(filaDes, colFecha + 2).Value = colCF_CJ(i, 2)                                                               
+          wsDes.Cells(filaDes, colFecha + 3).Value = colCF_CJ(i, 3)                                                               
+          wsDes.Cells(filaDes, colFecha + 4).Value = colCF_CJ(i, 4)                                                               
+          wsDes.Cells(filaDes, colFecha + 5).Value = colCF_CJ(i, 5)                                                               
+          wsDes.Cells(filaDes, colFecha + 13).Value = colAQ(i, 1)                                                                 
                                                                                                                                   
           transferidos = transferidos + 1                                                                                         
-  Sig:                                                                                                                            
-      Next i                                                                                                                      
-   
-  Fin:                                                                                                                            
-      Application.Calculation = xlCalculationAutomatic
-      Application.EnableEvents = True
-      Application.ScreenUpdating = True                                                                                           
-      Application.Calculate
+  Sig:            
+      Next i
                                                                                                                                   
+  Fin:
+      Application.Calculation = xlCalculationAutomatic                                                                            
+      Application.EnableEvents = True
+      Application.ScreenUpdating = True
+      Application.Calculate
+
       MsgBox "Listo en " & Format(Timer - t0, "0.0") & "s" & vbCrLf & _                                                           
              "Transferidos: " & transferidos & vbCrLf & _
              "Nuevos DNIs: " & nuevos & vbCrLf & _                                                                                
-             "Sin dislipidemia: " & sinDislip & vbCrLf & _                                                                        
-             "Slots llenos: " & yaLlenos, vbInformation
+             "Sin dislipidemia: " & sinDislip & vbCrLf & _
+             "Slots llenos: " & yaLlenos, vbInformation                                                                           
       Exit Sub                                                                                                                    
-                  
+   
   ErrLect:                                                                                                                        
-      MsgBox "Error leyendo origen en columna específica: " & Err.Description & vbCrLf & _
+      MsgBox "Error leyendo origen: " & Err.Description & vbCrLf & _
              "ultOri=" & ultOri & vbCrLf & _                                                                                      
-             "Revisa filas con #NUM! o fechas corruptas en D, H, AQ o CF:CJ", vbCritical                                          
+             "Revisa filas con #NUM! o fechas corruptas en D, H, AQ o CF:CJ", vbCritical
       Application.Calculation = xlCalculationAutomatic                                                                            
-      Application.EnableEvents = True                                                                                             
+      Application.EnableEvents = True
       Application.ScreenUpdating = True                                                                                           
   End Sub         
+                                                                                                                                  
+  Private Function HojaPorNombre_Dis(wb As Workbook, nombre As String) As Worksheet
+      Dim ws As Worksheet                                                                                                         
+      For Each ws In wb.Worksheets
+          If StrComp(ws.Name, nombre, vbTextCompare) = 0 Then                                                                     
+              Set HojaPorNombre_Dis = ws
+              Exit Function                                                                                                       
+          End If                                                                                                                  
+      Next ws
+      Set HojaPorNombre_Dis = Nothing                                                                                             
+  End Function    
+
+  Private Function LongStr_Dis(v As Variant) As Long
+      If IsError(v) Then
+          LongStr_Dis = 0                                                                                                         
+      Else
+          LongStr_Dis = Len(Trim(CStr(v & "")))                                                                                   
+      End If      
+  End Function
